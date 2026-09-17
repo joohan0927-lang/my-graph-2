@@ -1,0 +1,89 @@
+import pandas as pd
+import plotly.express as px
+import streamlit as st
+
+DATA_URL = "https://raw.githubusercontent.com/greatsong/modudata/main/data/kobis_movies.csv"
+
+st.set_page_config(
+    page_title="영화 데이터 그래프 도감 2 - 분포와 관계",
+    page_icon="🎬",
+    layout="wide",
+)
+
+st.title("🎬 영화 데이터 그래프 도감 2 - 분포와 관계")
+st.caption("1년간 박스오피스 10위권에 든 영화 가운데 해당 기간에 개봉한 영화들의 데이터를 살펴봅니다.")
+
+@st.cache_data
+def load_data():
+    df = pd.read_csv(DATA_URL)
+    return df
+
+
+try:
+    df = load_data()
+except Exception as e:
+    st.error(f"데이터를 불러오는 중 문제가 발생했습니다: {e}")
+    st.stop()
+
+# 장르가 여러 개 적힌 경우 첫 번째 장르만 사용
+# | 또는 / 둘 다 구분자로 처리
+df["genre_first"] = (
+    df["genre"]
+    .fillna("미상")
+    .astype(str)
+    .str.split(r"[|/]", regex=True)
+    .str[0]
+    .str.strip()
+    .replace("", "미상")
+)
+
+# -----------------------------
+# 그래프 1. 장르별 영화 편수
+# -----------------------------
+st.subheader("1. 장르별 영화 편수")
+
+genre_counts = (
+    df["genre_first"]
+    .value_counts()
+    .rename_axis("장르")
+    .reset_index(name="영화 편수")
+)
+
+fig = px.pie(
+    genre_counts,
+    names="장르",
+    values="영화 편수",
+    hole=0.45,
+    title="장르별 영화 편수",
+)
+
+fig.update_traces(
+    textinfo="percent",
+    hovertemplate=(
+        "<b>%{label}</b><br>"
+        "영화 편수: %{value}편<br>"
+        "비율: %{percent}<extra></extra>"
+    ),
+)
+
+fig.update_layout(
+    legend_title_text="장르",
+    margin=dict(t=60, b=20, l=20, r=20),
+)
+
+st.plotly_chart(fig, width="stretch")
+
+st.markdown("---")
+st.markdown("**이 그래프로 알 수 있는 것**")
+st.text_input(
+    "한 문장으로 적어 보세요.",
+    placeholder="예: 어떤 장르의 영화가 가장 많이 포함되어 있는지 알 수 있다.",
+    key="insight_1",
+    label_visibility="collapsed",
+)
+
+st.markdown("---")
+
+# 데이터 미리보기
+with st.expander("원본 데이터 미리 보기"):
+    st.dataframe(df, width="stretch")
